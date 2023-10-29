@@ -1,0 +1,15 @@
+FUNÇÕES SAMURAI:
+
+	makeSamurai - OK
+	desenhaSamurai - OK
+	moveSamurai - OK
+	trataTeclaSamurai - OK
+	ataqueSamurai - X
+
+
+FUNÇÕES ESQUELETO
+
+	makeEsqueleto - OK
+	desenhaEsqueleto - X
+	moveEsqueleto - X
+	ataqueeEsqueleto - X
