@@ -1,5 +1,11 @@
-FUNÇÕES SAMURAI:
+1. Declaração de todas as funções necessárias para o funcionamento do jogo. 
+2. Check List das funções que foram , ou não, realizadas no código.
 
+OK = Feito.
+X = Não feito.
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+FUNÇÕES SAMURAI:
 	makeSamurai - OK
 	desenhaSamurai - OK
 	moveSamurai - OK
@@ -7,9 +13,30 @@ FUNÇÕES SAMURAI:
 	ataqueSamurai - X
 
 
-FUNÇÕES ESQUELETO
-
+FUNÇÕES ESQUELETO:
 	makeEsqueleto - OK
 	desenhaEsqueleto - X
-	moveEsqueleto - X
-	ataqueeEsqueleto - X
+	moveEsqueleto - OK
+	ataqueEsqueleto - X
+
+
+FUNÇÕES ARQUEIRO
+	makeArqueiro - OK
+	desenhaArqueiro - X
+	moveArqueiro - OK
+	ataqueArqueiro - X
+
+
+FUNÇÕES JOGO:
+	makeJogo - OK
+
+
+FUNÇÕES GERAIS (QUE AINDA PODEM SER INSERIDAS EM ALGUM TOPICO ESPECIFICO):
+	colisao - OK
+	distancia - OK
+	receberDano - X
+
+
+
+
+
