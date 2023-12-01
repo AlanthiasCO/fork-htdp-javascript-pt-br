@@ -12,6 +12,3 @@ function main(): void {
     });
   }
   main();
-
-
-  
