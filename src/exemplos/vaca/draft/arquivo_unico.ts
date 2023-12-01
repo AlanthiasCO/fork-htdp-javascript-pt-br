@@ -1,3 +1,5 @@
+
+
 import {
   Imagem,
   alturaImagem,
@@ -11,780 +13,382 @@ import {
 } from "../../../../lib/image";
 import { reactor } from "../../../../lib/universe";
 import { testes } from "../../../../lib/utils";
-import imgVacaInoUrl from "./vaca-ino.png";
-import imgCCUrl from "./chupacabra.png";
+import imgSoldado from "/Users/Alan/fork-htdp-javascript-pt-br/src/exemplos/soldado/assets/survivor.png";
+import imgZombie from "/Users/Alan/fork-htdp-javascript-pt-br/src/exemplos/soldado/assets/zombie.png";
+import imgTiroUrl from "/Users/Alan/fork-htdp-javascript-pt-br/src/exemplos/soldado/assets/bullet_j-re.png";
+import imgFundoUrl from "/Users/Alan/fork-htdp-javascript-pt-br/src/exemplos/soldado/assets/Ground.png";
+
 
 const [LARGURA, ALTURA] = [600, 400];
 
 const TELA = cenaVazia(LARGURA, ALTURA);
+const IMG_FUNDO = carregarImagem(imgFundoUrl, LARGURA, ALTURA);
 
-const IMG_VACA_INO = carregarImagem(imgVacaInoUrl, 100, 70);
-const IMG_VACA_VORTANO = espelhar(IMG_VACA_INO);
-const IMG_CC_ESQ = carregarImagem(imgCCUrl, 95, 100);
-const IMG_CC_DIR = espelhar(IMG_CC_ESQ);
 
-const LARGURA_IMG_VACA = larguraImagem(IMG_VACA_INO);
-const ALTURA_IMG_VACA = alturaImagem(IMG_VACA_INO);
+const IMG_TIRO = carregarImagem(imgTiroUrl, 20, 8);
 
-const LARGURA_IMG_CC = larguraImagem(IMG_CC_ESQ);
-const ALTURA_IMG_CC = alturaImagem(IMG_CC_ESQ);
+const IMG_SOLDADO_INO = carregarImagem(imgSoldado, 100, 70);
+const IMG_ZOMBIE = carregarImagem(imgZombie, 100, 70);
 
-const Y_INICIAL_VACA = ALTURA / 2;
+const LARGURA_IMG_SOLDADO = larguraImagem(IMG_SOLDADO_INO);
+const ALTURA_IMG_SOLDADO = alturaImagem(IMG_SOLDADO_INO);
 
-const RAIO_COLISAO_VACA = (LARGURA_IMG_VACA + ALTURA_IMG_VACA) / 2 / 3;
-const RAIO_COLISAO_CC = (LARGURA_IMG_CC + ALTURA_IMG_CC) / 2 / 3;
+const Y_INICIAL_SOLDADO = ALTURA / 2;
 
-const LIMITE_ESQUERDA_VACA = 0 + LARGURA_IMG_VACA / 2;
-const LIMITE_DIREITA_VACA = LARGURA - LARGURA_IMG_VACA / 2;
-const LIMITE_BAIXO_VACA = ALTURA - ALTURA_IMG_VACA / 2;
-const LIMITE_CIMA_VACA = 0 + ALTURA_IMG_VACA / 2;
+const RAIO_COLISAO_SOLDADO = (LARGURA_IMG_SOLDADO + ALTURA_IMG_SOLDADO) / 2 / 3;
 
-const LIMITE_ESQUERDA_CC = 0 + LARGURA_IMG_CC / 2;
-const LIMITE_DIREITA_CC = LARGURA - LARGURA_IMG_CC / 2;
-const LIMITE_BAIXO_CC = ALTURA - ALTURA_IMG_CC / 2;
-const LIMITE_CIMA_CC = 0 + ALTURA_IMG_CC / 2;
+const LIMITE_ESQUERDA_SOLDADO = 0 + LARGURA_IMG_SOLDADO / 2;
+const LIMITE_DIREITA_SOLDADO = LARGURA - LARGURA_IMG_SOLDADO / 2;
+const LIMITE_BAIXO_SOLDADO = ALTURA - ALTURA_IMG_SOLDADO / 2;
+const LIMITE_CIMA_SOLDADO = 0 + ALTURA_IMG_SOLDADO / 2;
 
-const DX_PADRAO = 4;
-const DX_CC = 0;
-
-const TEXTO_GAME_OVER = texto("GAME OVER", "arial", "50px", "red");
+const VELOCIDADE_SOLDADO = 10;
+const VELOCIDADE_ZOMBIE = 1;
 
 const FPS = 60;
+let tempoDecorrido = 0;
+
+const INTERVALO_DE_DANO_ZOMBIE = 2 * FPS; // 5 segundos
+
+const TEMPO_INICIAL_PARA_SPAWN = 100; // Valor em frames
+const INTERVALO_DE_SPAWN = 5 * FPS; // Intervalo para criar novos zombies
+
+
+let tempoParaSpawn = TEMPO_INICIAL_PARA_SPAWN;
+const INTERVALO_DE_DANO_TIRO = 0.5 * FPS; // Intervalo de 0.5 segundo para o próximo dano
+
+let tempoDecorridoDanoTiro = 0;
+
+let tempoDecorridoDanoZombie = 0;
+
+const MAX_VIDA_REAL = 200;
+const MAX_VIDA_VISUAL = 4;
+let vidaReal = MAX_VIDA_REAL;
+let vidaVisual = MAX_VIDA_VISUAL;
 
 // DEFINIÇÕES DE DADOS:
 
-interface Vaca {
+//ok
+interface Soldado {
   x: number;
   y: number;
-  dx: number;
-  dy: number;
+  vidas: number;
 }
 
-function makeVaca(x: number, y: number, dx: number, dy: number): Vaca {
-  return { x, y, dx, dy };
+//ok
+function makeSoldado(): Soldado {
+  return { x: LARGURA / 2, y: Y_INICIAL_SOLDADO, vidas: 800 };
 }
-/**
- * Como criar objeto: makeVaca(Int, Int, Int, Int) ou {x: Int, y: Int, dx: Int, dy: Int}
- * interp. representa a posicao x e y da vaca, e o deslocamento
- * a cada tick no eixo x e y, chamados de dx e dy
- */
-// EXEMPLOS:
-const VACA_INICIAL = makeVaca(LIMITE_ESQUERDA_VACA, Y_INICIAL_VACA, 0, 0);
-const VACA_INICIAL_ANDANDO = makeVaca(
-  LIMITE_ESQUERDA_VACA,
-  Y_INICIAL_VACA,
-  DX_PADRAO,
-  0
-);
-const VACA_INICIAL_ANDANDO_PROX = makeVaca(
-  LIMITE_ESQUERDA_VACA + DX_PADRAO,
-  Y_INICIAL_VACA,
-  DX_PADRAO,
-  0
-);
-const VACA0 = makeVaca(LIMITE_ESQUERDA_VACA, Y_INICIAL_VACA, 3, 4);
-const VACA1 = makeVaca(LIMITE_ESQUERDA_VACA + 3, Y_INICIAL_VACA + 4, 3, 4);
-const VACA_MEIO = { x: LARGURA / 2, y: Y_INICIAL_VACA, dx: DX_PADRAO, dy: 0 };
-const VACA_FIM = makeVaca(LIMITE_DIREITA_VACA + 1, LIMITE_BAIXO_VACA, DX_PADRAO, 0);
-const VACA_VIRANDO = makeVaca(LIMITE_DIREITA_VACA, LIMITE_BAIXO_VACA, -DX_PADRAO, 0);
-const VACA_VORTANO = makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, -DX_PADRAO, 0);
 
-// ------------
-
-interface Chupacabra {
+//ok
+interface Zombie {
   x: number;
   y: number;
-  dy: number;
+  vidas: number;
+  tempoParaColisao: number;
+  direcaoX: number;
+  direcaoY: number;
 }
-function makeChupacabra(x: number, y: number, dy: number): Chupacabra {
-  return { x, y, dy };
+
+//ok
+function makeZombie(soldado: Soldado): Zombie {
+  const spawnX = LARGURA;
+  const spawnY = Math.random() * ALTURA;
+  const direcaoX = -1;
+  const direcaoY = Math.random() < 0.5 ? 1 : -1;
+
+  return { x: spawnX, y: spawnY, vidas: 4, direcaoX, direcaoY, tempoParaColisao: 0 };
 }
-/**
- * Como criar objeto: makeChupacabra(Int, Int, Int) ou {x: Int, y: Int, dy: Int}
- * interp. representa a posicao x e y de um cc, e o deslocamento
- * a cada tick no eixo y, chamado de dy
- */
-// EXEMPLOS:
 
-const CC_SEM_MAKE = {
-  x: 100,
-  y: 150,
-  dy: 5,
-};
-const CC_INICIAL = makeChupacabra(LARGURA / 2, LIMITE_CIMA_CC, 2);
-const CC_INICIAL_PROX = makeChupacabra(LARGURA / 2, LIMITE_CIMA_CC + 2, 2);
-const CC_INICIAL_PROX_PROX = makeChupacabra(
-  LARGURA / 2,
-  LIMITE_CIMA_CC + 2 + 2,
-  2
-);
-const CC_MEIO = makeChupacabra(LARGURA / 2, ALTURA / 2, 2);
-const CC_BAIXO = makeChupacabra(LARGURA / 2, LIMITE_BAIXO_CC + 1, 2);
-const CC_BAIXO_VIRANDO = makeChupacabra(LARGURA / 2, LIMITE_BAIXO_CC, -2);
-const CC_BAIXO_VIRANDO_PROX = makeChupacabra(
-  LARGURA / 2,
-  LIMITE_BAIXO_CC - 2,
-  -2
-);
-const CC_CIMA = makeChupacabra(LARGURA / 2, LIMITE_CIMA_CC - 1, -2);
-const CC_CIMA_VIRANDO = CC_INICIAL;
-
-const CC_UM_QUARTO_BAIXO = makeChupacabra(LARGURA / 4, LIMITE_BAIXO_CC, -1);
-const CC_UM_QUARTO_BAIXO_PROX = makeChupacabra(
-  LARGURA / 4,
-  LIMITE_BAIXO_CC - 1,
-  -1
-);
-const CC_TRES_QUARTOS_MEIO = makeChupacabra((LARGURA * 3) / 4, ALTURA / 2, 4);
-const CC_TRES_QUARTOS_MEIO_PROX = makeChupacabra(
-  (LARGURA * 3) / 4,
-  ALTURA / 2 + 4,
-  4
-);
-
-// --------
-
+//ok
 interface Jogo {
-  vaca: Vaca;
-  ccs: Chupacabra[];
-  pontuacao: number;
+  soldado: Soldado;
+  zombies: Zombie[];
   gameOver: boolean;
+  pontuacao: number;
   cont: number;
-}
-function makeJogo(
-  vaca: Vaca,
-  ccs: Chupacabra[],
-  pontuacao: number,
-  gameOver: boolean,
-  cont: number
-) {
-  return { vaca, ccs, pontuacao, gameOver, cont };
-}
-/**
- * Cria-se um jogo usando: makeJogo(Vaca, Chupacabra, number, boolean)
- * ou {vaca: Vaca, cc: Chupacabra, pontuacao: number, gameOver: boolean}
- * interp. representa o jogo contendo uma vaca, um cc, pontuacao
- * e flag de game over
- */
-// EXEMPLOS
-const JOGO_INICIAL = makeJogo(VACA_INICIAL, [CC_INICIAL], 0, false, 1);
-const JOGO_INICIAL_PROX = makeJogo(
-  VACA_INICIAL,
-  [CC_INICIAL_PROX],
-  0,
-  false,
-  2
-);
-const JOGO_INICIAL_ANDANDO = makeJogo(
-  VACA_INICIAL_ANDANDO,
-  [CC_INICIAL],
-  0,
-  false,
-  1
-);
-const JOGO_COLIDINDO = makeJogo(VACA_MEIO, [CC_MEIO], 500, false, 50);
-const JOGO_GAME_OVER = makeJogo(VACA_MEIO, [CC_MEIO], 500, true, 51);
-const JOGO_GAME_OVER_PROX = JOGO_GAME_OVER;
-
-const JOGO_PASSANDO_UM_SEGUNDO = makeJogo(
-  VACA_INICIAL,
-  [CC_INICIAL],
-  0,
-  false,
-  59
-);
-const JOGO_PASSANDO_UM_SEGUNDO_PROX = makeJogo(
-  VACA_INICIAL,
-  [CC_INICIAL_PROX],
-  1,
-  false,
-  0
-);
-
-const VACA_COLIDINDO_DIAG1 = makeVaca(
-  LARGURA / 2 - RAIO_COLISAO_VACA - RAIO_COLISAO_CC + DX_PADRAO,
-  Y_INICIAL_VACA,
-  DX_PADRAO,
-  0
-); // um pouco antes do meio, à esquerda
-const CC_COLIDINDO_DIAG1 = makeChupacabra(
-  LARGURA / 2,
-  ALTURA / 2 - RAIO_COLISAO_CC - RAIO_COLISAO_VACA + DX_PADRAO,
-  DX_PADRAO
-); // um pouco antes do meio, acima
-
-const JOGO_COLIDINDO_DIAG1 = makeJogo(
-  VACA_COLIDINDO_DIAG1,
-  [CC_COLIDINDO_DIAG1],
-  100,
-  false,
-  50
-);
-const JOGO_COLIDINDO_DIAG1_PROX = makeJogo(
-  VACA_COLIDINDO_DIAG1,
-  [CC_COLIDINDO_DIAG1],
-  100,
-  true,
-  1
-);
-
-const SCREENSHOT_COLIDINDO_DIAG1 = desenhaJogo(JOGO_COLIDINDO_DIAG1);
-
-const VACA_COLIDINDO_FRENTE = makeVaca(
-  LARGURA / 2 - (RAIO_COLISAO_VACA + RAIO_COLISAO_CC) + DX_PADRAO,
-  Y_INICIAL_VACA,
-  DX_PADRAO,
-  0
-); // um pouco antes do meio, à esquerda
-const CC_COLIDINDO_FRENTE = makeChupacabra(
-  LARGURA / 2 + RAIO_COLISAO_CC - DX_PADRAO,
-  ALTURA / 2,
-  DX_PADRAO
-); // EXATAMENTE NO MEIO NO y
-
-const JOGO_COLIDINDO_FRENTE = makeJogo(
-  VACA_COLIDINDO_FRENTE,
-  [CC_COLIDINDO_FRENTE],
-  100,
-  false,
-  50
-);
-const JOGO_COLIDINDO_FRENTE_PROX = makeJogo(
-  VACA_COLIDINDO_FRENTE,
-  [CC_COLIDINDO_FRENTE],
-  100,
-  true,
-  1
-);
-
-const SCREENSHOT_COLIDINDO_FRENTE = desenhaJogo(JOGO_COLIDINDO_FRENTE);
-
-const VACA_COLIDINDO_ATRAS = makeVaca(
-  LARGURA / 2 + RAIO_COLISAO_VACA + RAIO_COLISAO_CC - DX_PADRAO,
-  Y_INICIAL_VACA,
-  DX_PADRAO,
-  0
-); // um pouco antes do meio, à esquerda
-const CC_COLIDINDO_ATRAS = makeChupacabra(
-  LARGURA / 2 - RAIO_COLISAO_CC + DX_PADRAO,
-  ALTURA / 2,
-  DX_PADRAO
-); // EXATAMENTE NO MEIO NO y
-
-const JOGO_COLIDINDO_ATRAS = makeJogo(
-  VACA_COLIDINDO_ATRAS,
-  [CC_COLIDINDO_ATRAS],
-  100,
-  false,
-  50
-);
-const JOGO_COLIDINDO_ATRAS_PROX = makeJogo(
-  VACA_COLIDINDO_ATRAS,
-  [CC_COLIDINDO_ATRAS],
-  100,
-  true,
-  1
-);
-
-const SCREENSHOT_COLIDINDO_ATRAS = desenhaJogo(JOGO_COLIDINDO_ATRAS);
-
-const JOGO_3_CCS = makeJogo(
-  VACA_INICIAL,
-  [CC_UM_QUARTO_BAIXO, CC_INICIAL, CC_TRES_QUARTOS_MEIO],
-  0,
-  false,
-  1
-);
-const JOGO_3_CCS_PROX = makeJogo(
-  VACA_INICIAL,
-  [CC_UM_QUARTO_BAIXO_PROX, CC_INICIAL_PROX, CC_TRES_QUARTOS_MEIO_PROX],
-  0,
-  false,
-  2
-);
-
-const JOGO_3_CCS_COLIDINDO_SEGUNDO = makeJogo(
-  VACA_COLIDINDO_FRENTE,
-  [CC_UM_QUARTO_BAIXO, CC_COLIDINDO_FRENTE, CC_TRES_QUARTOS_MEIO],
-  50,
-  false,
-  50
-);
-const JOGO_3_CCS_COLIDINDO_SEGUNDO_PROX = makeJogo(
-  VACA_COLIDINDO_FRENTE,
-  [CC_UM_QUARTO_BAIXO, CC_COLIDINDO_FRENTE, CC_TRES_QUARTOS_MEIO],
-  50,
-  true,
-  1
-);
-
-const JOGO_3_CCS_COLIDINDO_TERCEIRO = makeJogo(
-  VACA_COLIDINDO_FRENTE,
-  [CC_UM_QUARTO_BAIXO, CC_TRES_QUARTOS_MEIO, CC_COLIDINDO_FRENTE],
-  50,
-  false,
-  50
-);
-const JOGO_3_CCS_COLIDINDO_TERCEIRO_PROX = makeJogo(
-  VACA_COLIDINDO_FRENTE,
-  [CC_UM_QUARTO_BAIXO, CC_TRES_QUARTOS_MEIO, CC_COLIDINDO_FRENTE],
-  50,
-  true,
-  1
-);
-
-/// FUNCOES
-
-/**
- * Vaca -> Vaca
- * Move a vaca nos eixos dx e dy
- * @param vaca: Vaca
- * @returns Vaca
- */
-function moveVaca(vaca: Vaca): Vaca {
-  if (vaca.x > LIMITE_DIREITA_VACA) {
-    return { ...vaca, x: LIMITE_DIREITA_VACA, dx: -vaca.dx };
-  }
-  if (vaca.x < LIMITE_ESQUERDA_VACA) {
-    return { ...vaca, x: LIMITE_ESQUERDA_VACA, dx: -vaca.dx };
-  }
-  if (vaca.y > LIMITE_BAIXO_VACA) {
-    return { ...vaca, y: LIMITE_BAIXO_VACA, dy: -vaca.dy };
-  }
-  if (vaca.y < LIMITE_CIMA_VACA) {
-    return { ...vaca, y: LIMITE_CIMA_VACA, dy: -vaca.dy };
-  }
-  return { ...vaca, x: vaca.x + vaca.dx, y: vaca.y + vaca.dy };
-}
-testes(() => {
-  describe("testes de moveVaca", () => {
-    test("move vaca inicial", () => {
-      expect(moveVaca(VACA0)).toStrictEqual(VACA1);
-    });
-    test("move vaca limite direito", () => {
-      expect(moveVaca(VACA_FIM)).toStrictEqual(VACA_VIRANDO);
-    });
-    test("move vaca limite esquerdo", () => {
-      expect(
-        moveVaca(makeVaca(LIMITE_ESQUERDA_VACA - 1, ALTURA / 2, -DX_PADRAO, 0))
-      ).toStrictEqual(makeVaca(LIMITE_ESQUERDA_VACA, ALTURA / 2, DX_PADRAO, 0));
-    });
-    test("move vaca limite baixo", () => {
-      expect(
-        moveVaca(makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA + 1, 0, DX_PADRAO))
-      ).toStrictEqual(makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, 0, -DX_PADRAO));
-    });
-    test("move vaca limite cima", () => {
-      expect(
-        moveVaca(makeVaca(LARGURA / 2, LIMITE_CIMA_VACA - 1, 0, -DX_PADRAO))
-      ).toStrictEqual(makeVaca(LARGURA / 2, LIMITE_CIMA_VACA, 0, DX_PADRAO));
-    });
-  });
-});
-
-/**
- * Desenha a vaca na tela na posiçao vaca.x, vaca.y.
- * @param vaca: Vaca
- * @returns Imagem
- */
-function desenhaVaca(vaca: Vaca): Imagem {
-  return colocarImagem(
-    vaca.dx < 0 ? IMG_VACA_VORTANO : IMG_VACA_INO,
-    vaca.x,
-    vaca.y,
-    TELA
-  );
-}
-testes(() => {
-  describe("testes de desenhaVaca", () => {
-    test("desenha vaca inicial", () => {
-      expect(desenhaVaca(VACA0)).toStrictEqual(
-        colocarImagem(IMG_VACA_INO, VACA0.x, VACA0.y, TELA)
-      );
-    });
-  });
-});
-
-/**
- * Vaca, String -> Vaca
- * Altera direção de movimento da vaca dependendo da tecla pressionada
- * @param vaca: Vaca
- * @param tecla: string
- * @returns Vaca
- */
-function trataTeclaVaca(vaca: Vaca, tecla: string): Vaca {
-  if (tecla === "ArrowRight") {
-    return { ...vaca, dx: DX_PADRAO, dy: 0 };
-  }
-  if (tecla === "ArrowLeft") {
-    return { ...vaca, dx: -DX_PADRAO, dy: 0 };
-  }
-  if (tecla === "ArrowDown") {
-    return { ...vaca, dx: 0, dy: DX_PADRAO };
-  }
-  if (tecla === "ArrowUp") {
-    return { ...vaca, dx: 0, dy: -DX_PADRAO };
-  }
-  return vaca;
-}
-testes(() => {
-  describe("testes de trataTeclaVaca", () => {
-    test("trata tecla flecha direita quando na horizontal", () => {
-      expect(
-        trataTeclaVaca(
-          makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, -DX_PADRAO, 0),
-          "ArrowRight"
-        )
-      ).toStrictEqual(makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, DX_PADRAO, 0));
-    });
-    test("trata tecla flecha direita quando na vertical", () => {
-      expect(
-        trataTeclaVaca(
-          makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, 0, DX_PADRAO),
-          "ArrowRight"
-        )
-      ).toStrictEqual(makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, DX_PADRAO, 0));
-    });
-    test("trata tecla flecha esquerda", () => {
-      expect(
-        trataTeclaVaca(
-          makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, DX_PADRAO, 0),
-          "ArrowLeft"
-        )
-      ).toStrictEqual(makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, -DX_PADRAO, 0));
-    });
-    test("trata tecla flecha direita quando na vertical", () => {
-      expect(
-        trataTeclaVaca(
-          makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, 0, DX_PADRAO),
-          "ArrowLeft"
-        )
-      ).toStrictEqual(makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, -DX_PADRAO, 0));
-    });
-    test("trata tecla flecha baixo", () => {
-      expect(
-        trataTeclaVaca(
-          makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, 0, -DX_PADRAO),
-          "ArrowDown"
-        )
-      ).toStrictEqual(makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, 0, DX_PADRAO));
-    });
-    test("trata tecla flecha baixo quando na horizontal", () => {
-      expect(
-        trataTeclaVaca(
-          makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, DX_PADRAO, 0),
-          "ArrowDown"
-        )
-      ).toStrictEqual(makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, 0, DX_PADRAO));
-    });
-    test("trata tecla flecha cima", () => {
-      expect(
-        trataTeclaVaca(
-          makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, 0, DX_PADRAO),
-          "ArrowUp"
-        )
-      ).toStrictEqual(makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, 0, -DX_PADRAO));
-    });
-    test("trata tecla flecha cima quando na horizontal", () => {
-      expect(
-        trataTeclaVaca(
-          makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, DX_PADRAO, 0),
-          "ArrowUp"
-        )
-      ).toStrictEqual(makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, 0, -DX_PADRAO));
-    });
-    test("trata tecla outra tecla", () => {
-      expect(
-        trataTeclaVaca(makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, 0, -DX_PADRAO), "a")
-      ).toStrictEqual(makeVaca(LARGURA / 2, LIMITE_BAIXO_VACA, 0, -DX_PADRAO));
-    });
-  });
-});
-
-/**
- * moveChupacabra: Chupacabra -> Chupacabra
- * Realiza o movimento do chupacabra
- */
-function moveChupacabra(cc: Chupacabra): Chupacabra {
-  if (cc.y > LIMITE_BAIXO_CC) {
-    return { ...cc, y: LIMITE_BAIXO_CC, dy: -cc.dy };
-  }
-  if (cc.y < LIMITE_CIMA_CC) {
-    return { ...cc, y: LIMITE_CIMA_CC, dy: -cc.dy };
-  }
-  return { ...cc, y: cc.y + cc.dy };
-}
-testes(() => {
-  describe("testes de moveChupacabra", () => {
-    test("move cc inicial", () => {
-      expect(moveChupacabra(CC_INICIAL)).toStrictEqual(CC_INICIAL_PROX);
-    });
-    test("move cc inicial prox", () => {
-      expect(moveChupacabra(CC_INICIAL_PROX)).toStrictEqual(
-        CC_INICIAL_PROX_PROX
-      );
-    });
-    test("move cc limite baixo", () => {
-      expect(moveChupacabra(CC_BAIXO)).toStrictEqual(CC_BAIXO_VIRANDO);
-    });
-    test("move cc limite baixo virado andando pra cima", () => {
-      expect(moveChupacabra(CC_BAIXO_VIRANDO)).toStrictEqual(
-        CC_BAIXO_VIRANDO_PROX
-      );
-    });
-    test("move cc limite cima", () => {
-      expect(moveChupacabra(CC_CIMA)).toStrictEqual(CC_CIMA_VIRANDO);
-    });
-  });
-});
-
-/**
- * distancia: number, number, number, number -> number
- * Calcula a distância euclidiana entre os dois pontos
- */
-function distancia(x1: number, y1: number, x2: number, y2: number): number {
-  return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-}
-testes(() => {
-  describe("testes distancia", () => {
-    test("teste 1", () => {
-      expect(distancia(0, 0, 3, 4)).toStrictEqual(5);
-    });
-    test("teste 2", () => {
-      expect(distancia(1, 2, 4, 6)).toStrictEqual(5);
-    });
-  });
-});
-
-/**
- * colidindo: Vaca, Chupacabra -> bool
- * Verifica se a vaca e o chupacabra se colidiram
- */
-function colidindo(vaca: Vaca, cc: Chupacabra): boolean {
-  let distanciaVacaCc = distancia(vaca.x, vaca.y, cc.x, cc.y);
-  return distanciaVacaCc < (RAIO_COLISAO_VACA + RAIO_COLISAO_CC) * 1.5;
-}
-testes(() => {
-  describe("testes colidindo", () => {
-    test("sem colisao", () => {
-      expect(colidindo(VACA_INICIAL, CC_INICIAL)).toStrictEqual(false);
-    });
-    test("colisao diagonal 1", () => {
-      expect(colidindo(VACA_COLIDINDO_DIAG1, CC_COLIDINDO_DIAG1)).toStrictEqual(
-        true
-      );
-    });
-    test("colisao de frente", () => {
-      expect(
-        colidindo(VACA_COLIDINDO_FRENTE, CC_COLIDINDO_FRENTE)
-      ).toStrictEqual(true);
-    });
-    test("colisao de trás", () => {
-      expect(colidindo(VACA_COLIDINDO_ATRAS, CC_COLIDINDO_ATRAS)).toStrictEqual(
-        true
-      );
-    });
-  });
-});
-
-function colidindoComAlgum(vaca: Vaca, ccs: Chupacabra[]): boolean {
-  return ccs.some((cc) => colidindo(vaca, cc));
+  tempoParaSpawn: number;
+  tiros: Tiro[];
 }
 
-function moveChupacabras(ccs: Chupacabra[]): Chupacabra[] {
-  return ccs.map(moveChupacabra);
+interface Tiro {
+  x: number;
+  y: number;
+  ativo: boolean;
 }
 
-/**
- * atualizaJogo: Jogo -> Jogo
- * Atualiza o jogo a cada tick.
- * TODO
- */
-function atualizaJogo(jogo: Jogo): Jogo {
-  if (colidindoComAlgum(jogo.vaca, jogo.ccs)) {
-    return { ...jogo, gameOver: true, cont: 1 };
+//ok
+function makeTiro(x: number, y: number): Tiro {
+  return { x, y, ativo: true };
+}
+
+//ok
+function makeJogo(): Jogo {
+  return { soldado: makeSoldado(), zombies: [], gameOver: false, tempoParaSpawn: 0, pontuacao: 0, cont: 0, tiros: [] };
+}
+
+//ok
+function moveSoldado(soldado: Soldado, tecla: string): Soldado {
+  let novaX = soldado.x;
+  let novaY = soldado.y;
+
+  if (tecla === "ArrowRight" && soldado.x < LIMITE_DIREITA_SOLDADO) {
+    novaX += VELOCIDADE_SOLDADO;
+  } else if (tecla === "ArrowLeft" && soldado.x > LIMITE_ESQUERDA_SOLDADO) {
+    novaX -= VELOCIDADE_SOLDADO;
+  } else if (tecla === "ArrowDown" && soldado.y < LIMITE_BAIXO_SOLDADO) {
+    novaY += VELOCIDADE_SOLDADO;
+  } else if (tecla === "ArrowUp" && soldado.y > LIMITE_CIMA_SOLDADO) {
+    novaY -= VELOCIDADE_SOLDADO;
   }
 
-  let vacaMovida = moveVaca(jogo.vaca);
-  let ccsMovidos = moveChupacabras(jogo.ccs);
+  return { ...soldado, x: novaX, y: novaY };
+}
 
+//ok
+function moveZombie(zombie: Zombie, soldado: Soldado): Zombie {
+  const deltaX = soldado.x - zombie.x;
+  const deltaY = soldado.y - zombie.y;
+  const distancia = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+  if (distancia === 0) {
+    return zombie; // Zombie colidiu com a soldado
+  }
+
+  const direcaoX = deltaX / distancia;
+  const direcaoY = deltaY / distancia;
+
+  const novoX = zombie.x + direcaoX * VELOCIDADE_ZOMBIE;
+  const novoY = zombie.y + direcaoY * VELOCIDADE_ZOMBIE;
+
+  // Verifica se o zombie sairá da tela e ajusta sua posição
+  const limiteEsquerda = LIMITE_ESQUERDA_SOLDADO;
+  const limiteDireita = LARGURA - LIMITE_ESQUERDA_SOLDADO;
+  const limiteCima = LIMITE_CIMA_SOLDADO;
+  const limiteBaixo = ALTURA - LIMITE_CIMA_SOLDADO;
+
+  if (novoX < limiteEsquerda) {
+    return { ...zombie, x: limiteEsquerda, y: novoY };
+  }
+  if (novoX > limiteDireita) {
+    return { ...zombie, x: limiteDireita, y: novoY };
+  }
+  if (novoY < limiteCima) {
+    return { ...zombie, x: novoX, y: limiteCima };
+  }
+  if (novoY > limiteBaixo) {
+    return { ...zombie, x: novoX, y: limiteBaixo };
+  }
+
+  return { ...zombie, x: novoX, y: novoY };
+}
+
+
+//ok
+function atualizaJogo(jogo: Jogo, tecla: string): Jogo {
   let novoCont = (jogo.cont + 1) % FPS;
   let novaPontuacao = novoCont === 0 ? jogo.pontuacao + 1 : jogo.pontuacao;
+  const soldadoAtualizada = moveSoldado(jogo.soldado, tecla);
+  const zombiesAtualizados = jogo.zombies.map((zombie) =>
+  moveZombie(zombie, soldadoAtualizada)
+);
 
-  return {
-    ...jogo,
-    vaca: vacaMovida,
-    ccs: ccsMovidos,
-    pontuacao: novaPontuacao,
-    cont: novoCont,
-  };
+  const tirosAtualizados = moveTiros(jogo.tiros);
+
+  tempoDecorridoDanoTiro += 1;
+
+  if (tempoDecorridoDanoTiro >= INTERVALO_DE_DANO_TIRO) {
+    tempoDecorridoDanoTiro = 0;
+
+  // Verifica colisão entre tiros e zombies
+  for (let i = 0; i < zombiesAtualizados.length; i++) {
+    for (let j = 0; j < tirosAtualizados.length; j++) {
+      if (tirosAtualizados[j].ativo && zombiesAtualizados[i].vidas > 0) {
+        if (colisaoTiroZombie(tirosAtualizados[j], zombiesAtualizados[i])) {
+          zombiesAtualizados[i].vidas -= 1;
+          tirosAtualizados[j].ativo = false;
+        }
+      }
+    }
+  }
 }
-testes(() => {
-  describe("Testes do atualizaJogo", () => {
-    test("Jogo tranquilo, sem colisao", () => {
-      expect(atualizaJogo(JOGO_INICIAL)).toStrictEqual(JOGO_INICIAL_PROX);
-    });
-    test("Jogo com colisao diagonal", () => {
-      expect(atualizaJogo(JOGO_COLIDINDO_DIAG1)).toStrictEqual(
-        JOGO_COLIDINDO_DIAG1_PROX
-      );
-    });
-    test("Jogo com colisao frente", () => {
-      expect(atualizaJogo(JOGO_COLIDINDO_FRENTE)).toStrictEqual(
-        JOGO_COLIDINDO_FRENTE_PROX
-      );
-    });
-    test("Jogo com colisao atrás", () => {
-      expect(atualizaJogo(JOGO_COLIDINDO_ATRAS)).toStrictEqual(
-        JOGO_COLIDINDO_ATRAS_PROX
-      );
-    });
-    test("Jogo com varios chupacabras", () => {
-      expect(atualizaJogo(JOGO_3_CCS)).toStrictEqual(JOGO_3_CCS_PROX);
-    });
-    test("Jogo com varios chupacabras colidindo com o segundo da lista", () => {
-      expect(atualizaJogo(JOGO_3_CCS_COLIDINDO_SEGUNDO)).toStrictEqual(
-        JOGO_3_CCS_COLIDINDO_SEGUNDO_PROX
-      );
-    });
-    test("Jogo com varios chupacabras colidindo com o terceiro da lista", () => {
-      expect(atualizaJogo(JOGO_3_CCS_COLIDINDO_TERCEIRO)).toStrictEqual(
-        JOGO_3_CCS_COLIDINDO_TERCEIRO_PROX
-      );
-    });
-  });
-});
 
-function desenhaChupacabrasRec(ccs: Chupacabra[], xVaca: number): Imagem {
-  if (ccs.length === 0) {
-    // CASO BASE
-    return folhaTransparente(LARGURA, ALTURA);
+  tempoDecorrido += 1 / FPS;
+
+  // Verifica colisão entre soldado e zombies
+  for (const zombie of zombiesAtualizados) {
+    if (zombie.vidas > 0) {
+      const distanciaX = soldadoAtualizada.x - zombie.x;
+      const distanciaY = soldadoAtualizada.y - zombie.y;
+      const distancia = Math.sqrt(
+        distanciaX * distanciaX + distanciaY * distanciaY
+      );
+
+      if (distancia <= 20) {
+        vidaReal -= 1; // Reduz a vida real em 1 ponto
+        if (vidaReal <= 0) {
+          return { ...jogo, gameOver: true };
+        }
+        vidaVisual = Math.ceil(vidaReal / (MAX_VIDA_REAL / MAX_VIDA_VISUAL));
+      }
+      if (zombie.tempoParaColisao >= 10000 * FPS) {
+        vidaReal -= 1; // Reduz a vida real em 1 ponto
+        zombie.tempoParaColisao = 0; // Reinicia o contador de tempo
+        vidaVisual = Math.ceil(vidaReal / (MAX_VIDA_REAL / MAX_VIDA_VISUAL));
+      }
+      zombie.tempoParaColisao += 1;
+    }
   }
 
-  // else
-  let primeiroCc = ccs[0];
-  return colocarImagem(
-    // desenha a imagem do primeiro
-    primeiroCc.x >= xVaca ? IMG_CC_ESQ : IMG_CC_DIR,
-    primeiroCc.x,
-    primeiroCc.y,
-    desenhaChupacabrasRec(ccs.slice(1), xVaca)
-  ); // desenha o resto
+  // Verifica spawn de zombies
+  tempoParaSpawn -= 1;
+
+  if (tempoParaSpawn <= 0) {
+    const novoZombie = makeZombie(jogo.soldado);
+    zombiesAtualizados.push(novoZombie);
+    tempoParaSpawn = INTERVALO_DE_SPAWN; // Defina o intervalo desejado para criar novos zombies
+  }
+
+  tempoDecorridoDanoZombie += 1;
+
+  if (tempoDecorridoDanoZombie >= INTERVALO_DE_DANO_ZOMBIE) {
+    soldadoAtualizada.vidas -= 1;
+    tempoDecorridoDanoZombie = 0; // Reinicia o contador de tempo
+  }
+
+  return {
+    soldado: { ...soldadoAtualizada, vidas: vidaReal },
+    zombies: zombiesAtualizados,
+    gameOver: jogo.gameOver,
+    tempoParaSpawn: tempoParaSpawn,
+        pontuacao: novaPontuacao,
+    cont: novoCont,
+    tiros: tirosAtualizados,
+  };
 }
 
-function desenhaChupacabras(ccs: Chupacabra[], xVaca: number): Imagem {
-  let imagem = folhaTransparente(LARGURA, ALTURA);
+//ok
+function formatarTempo(tempo) {
+  const minutos = Math.floor(tempo / 60);
+  const segundos = Math.floor(tempo % 60);
+  return `${minutos}:${segundos < 10 ? '0' : ''}${segundos}`;
+}
 
-  for (let cc of ccs) {
-    // for each
-    imagem = colocarImagem(
-      cc.x >= xVaca ? IMG_CC_ESQ : IMG_CC_DIR,
-      cc.x,
-      cc.y,
-      imagem
-    );
+//ok
+function colisaoTiroZombie(tiro, zombie) {
+  const distanciaX = tiro.x - zombie.x;
+  const distanciaY = tiro.y - zombie.y;
+  const distancia = Math.sqrt(distanciaX * distanciaX + distanciaY * distanciaY);
+
+  return distancia <= 520; // Ajuste o valor de colisão conforme necessário
+}
+
+//ok
+function desenhaZombies(zombies: Zombie[], imagem: Imagem): Imagem {
+  for (const zombie of zombies) {
+    imagem = colocarImagem(IMG_ZOMBIE, zombie.x, zombie.y, imagem);
   }
 
   return imagem;
 }
 
-/**
- * desenhaJogo: Jogo -> Imagem
- * Desenha o jogo.
- */
+//ok
+function desenhaVidas(vidaReal, imagem: Imagem): Imagem {
+  const vidaImagem = texto(`Vidas: ${vidaVisual}`, "Arial", "20px", "black");
+  const novaImagem = colocarImagem(vidaImagem, 20, ALTURA - 30, imagem);
+  return novaImagem;
+}
+
+
+//ok
+function desenhaSoldado(soldado: Soldado): Imagem {
+  return colocarImagem(IMG_SOLDADO_INO, soldado.x, soldado.y, IMG_FUNDO);
+}
+
+
+//ok
+function desenhaPontuacao(pontuacao: number, imagem: Imagem): Imagem {
+  const pontuacaoImagem = texto(`Pontuação: ${pontuacao}`, "Arial", "20px", "black");
+  const novaImagem = colocarImagem(pontuacaoImagem, LARGURA - 585, 30, imagem);
+  return novaImagem;
+}
+
+
+//ok
+function desenhaTiros(tiros: Tiro[], imagem: Imagem): Imagem {
+  for (const tiro of tiros) {
+    if (tiro.ativo) {
+      imagem = colocarImagem(IMG_TIRO, tiro.x, tiro.y, imagem);
+    }
+  }
+  return imagem;
+}
+
+//ok
 function desenhaJogo(jogo: Jogo): Imagem {
+  // Criar uma nova imagem que seja uma cópia da imagem de fundo
+  let imagemFinal = cenaVazia(LARGURA, ALTURA);
+  imagemFinal = colocarImagem(IMG_FUNDO, LARGURA, ALTURA, imagemFinal);
+
   if (jogo.gameOver) {
     return colocarImagem(
-      texto(jogo.pontuacao.toString(), "Arial", "50px", "blue"),
-      LARGURA / 2 - 30,
-      ALTURA / 2 + 50,
-      colocarImagem(TEXTO_GAME_OVER, LARGURA / 4, ALTURA / 2, TELA)
+      texto(`Pontuação: ${jogo.pontuacao}`, "Arial", "50px", "black"),
+      LARGURA / 2 - 160,
+      ALTURA / 2 + 40,
+      IMG_FUNDO 
     );
   }
-  // else
-  return colocarImagem(
-    texto(jogo.pontuacao.toString(), "Arial", "20px"),
-    LARGURA - 50,
-    0 + 50,
-    colocarImagem(
-      desenhaChupacabras(jogo.ccs, jogo.vaca.x),
-      LARGURA / 2,
-      ALTURA / 2,
-      desenhaVaca(jogo.vaca)
-    )
-  );
+
+  imagemFinal = desenhaSoldado(jogo.soldado);
+  imagemFinal = desenhaZombies(jogo.zombies, imagemFinal);
+  imagemFinal = desenhaPontuacao(jogo.pontuacao, imagemFinal);
+  imagemFinal = desenhaVidas(jogo.soldado.vidas, imagemFinal);
+  imagemFinal = desenhaTiros(jogo.tiros, imagemFinal);
+
+  return imagemFinal;
 }
 
-/**
- * trataTeclaJogo: Jogo, String -> Jogo
- * Trata os eventos de tecla.
- * TODO
- */
-function trataTeclaJogo(jogo: Jogo, tecla: string): Jogo {
-  if (tecla === "r" && jogo.gameOver) {
-    return JOGO_3_CCS;
-  }
-  let vacaAtualizada = trataTeclaVaca(jogo.vaca, tecla);
-  return { ...jogo, vaca: vacaAtualizada };
-}
-testes(() => {
-  describe("Testes trata tecla", () => {
-    test("Quando tecla restart e game over", () => {
-      expect(trataTeclaJogo(JOGO_GAME_OVER, "r")).toStrictEqual(JOGO_3_CCS);
-    });
-    test("Quando tecla restart sem game over", () => {
-      expect(trataTeclaJogo(JOGO_INICIAL_PROX, "r")).toStrictEqual(
-        JOGO_INICIAL_PROX
-      );
-    });
-    test("Quando outra tecla e game over", () => {
-      expect(trataTeclaJogo(JOGO_GAME_OVER, "a")).toStrictEqual(JOGO_GAME_OVER);
-    });
-  });
-});
-
-/**
- * trataTeclaSoltaJogo: Jogo, String -> Jogo
- * Trata evento de soltar tecla do jogo.
- */
-function trataTeclaSoltaJogo(jogo: Jogo, tecla: string): Jogo {
-  if (["ArrowUp", "ArrowDown", "ArrowRight", "ArrowLeft"].includes(tecla)) {
-    return { ...jogo, vaca: { ...jogo.vaca, dx: 0, dy: 0 } };
-  }
-  return jogo;
-}
-testes(() => {
-  describe("Testes trata tecla solta", () => {
-    test("Quando solta tecla direita", () => {
-      expect(
-        trataTeclaSoltaJogo(JOGO_INICIAL_ANDANDO, "ArrowRight")
-      ).toStrictEqual(JOGO_INICIAL);
-    });
-    test("Quando solta qualquer outra tecla", () => {
-      expect(trataTeclaSoltaJogo(JOGO_INICIAL_ANDANDO, "a")).toStrictEqual(
-        JOGO_INICIAL_ANDANDO
-      );
-    });
-  });
-});
-
-function main(): void {
-  reactor(
-    JOGO_3_CCS, // Jogo
-    {
-      aCadaTick: atualizaJogo, // Jogo -> Jogo
-      desenhar: desenhaJogo, // Jogo -> Imagem
-      quandoTecla: trataTeclaJogo, // Jogo, String -> Jogo
-      quandoSoltaTecla: trataTeclaSoltaJogo, // Jogo, String -> Jogo
-      modoDebug: true
+//ok
+function moveTiros(tiros: Tiro[]): Tiro[] {
+  return tiros.map((tiro) => {
+    if (tiro.ativo) {
+      tiro.x += VELOCIDADE_ZOMBIE * 3; // Ajuste a velocidade dos tiros conforme necessário
     }
-  );
+    return tiro;
+  });
 }
 
-main(); // LEMBRAR: ALTERAR PATH DO SCRIPT NO index.html
-// SCREENSHOT_COLIDINDO_ATRAS.desenha();
-// SCREENSHOT_COLIDINDO_ATRAS.desenha();
-// TEXTO_GAME_OVER.desenha();
+//ok
+function trataTeclaJogo(jogo: Jogo, tecla: string): Jogo {
+  if (jogo.gameOver) {
+    return makeJogo();
+  }
 
-// colocarImagem(IMG_CC_ESQ, 100, 100, TELA).desenha();
-// IMG_CC_ESQ.desenha();
+  let jogoAtualizado = jogo; // Comece com o jogo atual
+
+  const soldadoAtualizada = moveSoldado(jogoAtualizado.soldado, tecla);
+
+  // Disparar quando a barra de espaço for pressionada
+  if (tecla === ' ') {
+    const novoTiro = makeTiro(soldadoAtualizada.x + 40, soldadoAtualizada.y + 18);
+    jogoAtualizado.tiros.push(novoTiro);
+  }
+
+  return { ...jogoAtualizado, soldado: soldadoAtualizada };
+}
+
+
+//ok
+function main(): void {
+  const jogo = makeJogo();
+  const canvas = document.getElementById('universe') as HTMLCanvasElement;
+
+  reactor(jogo, {
+    aCadaTick: atualizaJogo,
+    desenhar: desenhaJogo,
+    quandoTecla: trataTeclaJogo,
+    modoDebug: false,
+  });
+}
+
+main();
